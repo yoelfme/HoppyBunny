@@ -5,15 +5,38 @@ class MainScene: CCNode {
     weak var gamePhysicsNode : CCPhysicsNode!
     weak var ground1 : CCSprite!
     weak var ground2 : CCSprite!
+    weak var obstaclesLayer : CCNode!
     
     var sinceTouch : CCTime = 0
     var scrollSpeed : CGFloat = 80
     var grounds = [CCSprite]()  // initializes an empty array
     
+    var obstacles : [CCNode] = []
+    let firstObstaclePosition : CGFloat = 280
+    let distanceBetweenObstacles : CGFloat = 160
+    
     func didLoadFromCCB() {
         userInteractionEnabled = true
         grounds.append(ground1)
         grounds.append(ground2)
+        
+        for _ in 0...2 {
+            spawnNewObstacle()
+        }
+    }
+    
+    // Method used for generate obstacle
+    func spawnNewObstacle() {
+        var prevObstaclePos = firstObstaclePosition
+        if obstacles.count > 0 {
+            prevObstaclePos = obstacles.last!.position.x
+        }
+        
+        let obstacle = CCBReader.load("Obstacle") as! Obstacle
+        obstacle.position = ccp(prevObstaclePos + distanceBetweenObstacles, 0)
+        obstacle.setupRandomPosition()
+        obstaclesLayer.addChild(obstacle)
+        obstacles.append(obstacle)
     }
     
     override func touchBegan(touch: CCTouch!, withEvent event: CCTouchEvent!) {
@@ -47,6 +70,22 @@ class MainScene: CCNode {
             let groundScreenPosition = convertToNodeSpace(groundWorldPosition)
             if groundScreenPosition.x <= (-ground.contentSize.width) {
                 ground.position = ccp(ground.position.x + ground.contentSize.width * 2, ground.position.y)
+            }
+        }
+        
+        for obstacle in obstacles.reverse() {
+            let obstacleWorldPosition = gamePhysicsNode.convertToWorldSpace(obstacle.position)
+            let obstacleScreenPosition = convertToNodeSpace(obstacleWorldPosition)
+            
+            // obstacle moved past left side of screen?
+            if obstacleScreenPosition.x < (-obstacle.contentSize.width) {
+                obstacle.removeFromParent()
+                print(obstacles.indexOf(obstacle)!)
+                obstacles.removeAtIndex(obstacles.indexOf(obstacle)!)
+
+                
+                // for each removed obstacle, add a new one
+                spawnNewObstacle()
             }
         }
     }
