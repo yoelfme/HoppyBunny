@@ -1,17 +1,19 @@
 import Foundation
 
-class MainScene: CCNode {
+class MainScene: CCNode, CCPhysicsCollisionDelegate {
     weak var hero : CCSprite!
     weak var gamePhysicsNode : CCPhysicsNode!
     weak var ground1 : CCSprite!
     weak var ground2 : CCSprite!
     weak var obstaclesLayer : CCNode!
+    weak var restartButton : CCButton!
     
     var sinceTouch : CCTime = 0
     var scrollSpeed : CGFloat = 80
     var grounds = [CCSprite]()  // initializes an empty array
-    
     var obstacles : [CCNode] = []
+    var gameOver = false
+    
     let firstObstaclePosition : CGFloat = 280
     let distanceBetweenObstacles : CGFloat = 160
     
@@ -23,6 +25,8 @@ class MainScene: CCNode {
         for _ in 0...2 {
             spawnNewObstacle()
         }
+        
+        gamePhysicsNode.collisionDelegate = self
     }
     
     // Method used for generate obstacle
@@ -39,10 +43,40 @@ class MainScene: CCNode {
         obstacles.append(obstacle)
     }
     
+    func ccPhysicsCollisionBegin(pair: CCPhysicsCollisionPair!, hero: CCNode!, level: CCNode!) -> Bool {
+        triggerGameOver()
+        return true
+    }
+    
+    func restart() {
+        let scene = CCBReader.loadAsScene("MainScene")
+        CCDirector.sharedDirector().presentScene(scene)
+    }
+    
+    func triggerGameOver() {
+        if (gameOver == false) {
+            gameOver = true
+            restartButton.visible = true
+            scrollSpeed = 0
+            hero.rotation = 90
+            hero.physicsBody.allowsRotation = false
+            
+            // just in case
+            hero.stopAllActions()
+            
+            let move = CCActionEaseBounceOut(action: CCActionMoveBy(duration: 0.2, position: ccp(0, 4)))
+            let moveBack = CCActionEaseBounceOut(action: move.reverse())
+            let shakeSequence = CCActionSequence(array: [move, moveBack])
+            runAction(shakeSequence)
+        }
+    }
+    
     override func touchBegan(touch: CCTouch!, withEvent event: CCTouchEvent!) {
-        hero.physicsBody.applyImpulse(ccp(0, 400))
-        hero.physicsBody.applyAngularImpulse(10000)
-        sinceTouch = 0
+        if(gameOver == false) {
+            hero.physicsBody.applyImpulse(ccp(0, 400))
+            hero.physicsBody.applyAngularImpulse(10000)
+            sinceTouch = 0
+        }
     }
     
     override func update(delta: CCTime) {
@@ -80,7 +114,6 @@ class MainScene: CCNode {
             // obstacle moved past left side of screen?
             if obstacleScreenPosition.x < (-obstacle.contentSize.width) {
                 obstacle.removeFromParent()
-                print(obstacles.indexOf(obstacle)!)
                 obstacles.removeAtIndex(obstacles.indexOf(obstacle)!)
 
                 
